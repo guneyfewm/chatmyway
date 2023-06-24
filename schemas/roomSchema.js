@@ -5,6 +5,7 @@ const messageListSchema = new mongoose.Schema({
   messages: [
     {
       user: { required: true, type: String },
+      username:{required:true,type:String},
       content: { required: true, type: String },
     },
   ],
