@@ -9,6 +9,7 @@ mongoose.connect("mongodb://localhost:27017/chat-app").then(() => {
   console.log("db connected");
 });
 const io = require("socket.io")(4000, {
+  maxHttpBufferSize: 1e7,
   cors: {
     origin: "http://localhost:3000",
   },
@@ -30,7 +31,7 @@ app.post("/verify", async (req, res) => {
     const { token } = req.body;
     const verify = await jwt.verify(token, process.env.SECRET, (err) => {
       if (err) {
-        res.status(401).json({ valid: false,error:err.message });
+        res.status(401).json({ valid: false, error: err.message });
       } else {
         res.status(200).json({ valid: true });
       }
@@ -57,23 +58,23 @@ io.on("connection", (socket) => {
     try {
       socket.join(room);
       console.log(socket.id + " connected to room " + room);
-    } catch (err) {
-    }
+    } catch (err) {}
   });
-  socket.on("send-msg", async (content1 , user, room) => {
-    const {userId,username} = jwt.decode(user)
+  socket.on("send-msg", async (content1, user, room, pictures) => {
+    console.log(pictures+"213123124asg")
+    const { userId, username } = jwt.decode(user);
     if (room !== "") {
-      io.to(room).emit("receive-msg", content1,userId,username);
+      io.to(room).emit("receive-msg", content1, userId, username,pictures);
       const inDB = await MessageListModel.findOne({ room: room });
       if (!inDB) {
         MessageListModel.create({
-          messages: [{ user: userId,username, content: content1 }],
+          messages: [{ user: userId, username, content: content1,pictures }],
           room: room,
         });
       } else {
         inDB.messages = [
           ...inDB.messages,
-          { user: userId,username, content: content1 },
+          { user: userId, username, content: content1,pictures },
         ];
         inDB.save();
       }
