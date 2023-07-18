@@ -15,7 +15,7 @@ const io = require("socket.io")(4000, {
   },
 });
 const app = express();
-app.use(express.json());
+app.use(express.json({limit:"10mb"}));
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -29,15 +29,10 @@ app.use("/user", userRouter);
 app.post("/verify", async (req, res) => {
   try {
     const { token } = req.body;
-    const verify = await jwt.verify(token, process.env.SECRET, (err) => {
-      if (err) {
-        res.status(401).json({ valid: false, error: err.message });
-      } else {
-        res.status(200).json({ valid: true });
-      }
-    });
+    const { userId } = await jwt.verify(token, process.env.SECRET);
+    res.status(200).json({ valid: true, userId });
   } catch (err) {
-    res.status(401).json({ valid: false });
+    res.status(401).json({ valid: false, error: err.message });
   }
 });
 app.use(withAuth);
@@ -61,20 +56,20 @@ io.on("connection", (socket) => {
     } catch (err) {}
   });
   socket.on("send-msg", async (content1, user, room, pictures) => {
-    console.log(pictures+"213123124asg")
+    console.log(pictures + "213123124asg");
     const { userId, username } = jwt.decode(user);
     if (room !== "") {
-      io.to(room).emit("receive-msg", content1, userId, username,pictures);
+      io.to(room).emit("receive-msg", content1, userId, username, pictures);
       const inDB = await MessageListModel.findOne({ room: room });
       if (!inDB) {
         MessageListModel.create({
-          messages: [{ user: userId, username, content: content1,pictures }],
+          messages: [{ user: userId, username, content: content1, pictures }],
           room: room,
         });
       } else {
         inDB.messages = [
           ...inDB.messages,
-          { user: userId, username, content: content1,pictures },
+          { user: userId, username, content: content1, pictures },
         ];
         inDB.save();
       }

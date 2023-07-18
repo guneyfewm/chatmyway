@@ -35,7 +35,13 @@ const LoadUser = async (req, res) => {
     const { username } = req.body; //username
     const inDB = await UserModel.findOne({ username });
     console.log(inDB);
-    res.status(200).json({ username: inDB.username });
+    res
+      .status(200)
+      .json({
+        username: inDB.username,
+        id: inDB._id,
+        profilePicture: inDB.profilePicture,
+      });
   } catch (err) {
     console.log(err.message);
   }
@@ -43,19 +49,19 @@ const LoadUser = async (req, res) => {
 
 const UpdateProfilePicture = async (req, res) => {
   try {
-    const { username, base64 } = req.body;
-    const auth = await UserModel.findOne({_id:req.user})
-    if(!auth){
-      throw new Error("Not verified.")
+    const { username, profilePicture } = req.body;
+    const auth = await UserModel.findOne({ _id: req.user }); //already verifying the token with middleware
+    if (!auth) {
+      throw new Error("Not verified.");
     }
     const inDB = await UserModel.findOneAndUpdate(
       { username },
-      { profilePicture: base64 },
+      { profilePicture },
       { new: true }
     );
     res.status(200).json({ inDB });
   } catch (err) {
-    console.log(err.message);
+    res.status(400).json({ error: err.message });
   }
 };
 
