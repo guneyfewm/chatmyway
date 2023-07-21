@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const MessageListModel = require("./schemas/roomSchema");
 const userRouter = require("./routers/userRouter");
 const cors = require("cors");
+const UserModel = require("./schemas/userSchema")
 const jwt = require("jsonwebtoken");
 const withAuth = require("./middleware/withAuth");
 mongoose.connect("mongodb://localhost:27017/chat-app").then(() => {
@@ -56,20 +57,21 @@ io.on("connection", (socket) => {
     } catch (err) {}
   });
   socket.on("send-msg", async (content1, user, room, pictures) => {
-    console.log(pictures + "213123124asg");
     const { userId, username } = jwt.decode(user);
+    const res = await UserModel.findOne({_id:userId})
     if (room !== "") {
-      io.to(room).emit("receive-msg", content1, userId, username, pictures);
+      io.to(room).emit("receive-msg", content1, userId, username, pictures, res.profilePicture);
+      console.log(res.profilePicture)
       const inDB = await MessageListModel.findOne({ room: room });
       if (!inDB) {
         MessageListModel.create({
-          messages: [{ user: userId, username, content: content1, pictures }],
+          messages: [{ user: userId, username, content: content1, pictures,profilePicture:res.profilePicture }],
           room: room,
         });
       } else {
         inDB.messages = [
           ...inDB.messages,
-          { user: userId, username, content: content1, pictures },
+          { user: userId, username, content: content1, pictures,profilePicture:res.profilePicture },
         ];
         inDB.save();
       }
