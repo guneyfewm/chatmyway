@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const MessageListModel = require("./schemas/roomSchema");
 const userRouter = require("./routers/userRouter");
 const cors = require("cors");
-const UserModel = require("./schemas/userSchema")
+const UserModel = require("./schemas/userSchema");
 const jwt = require("jsonwebtoken");
 const withAuth = require("./middleware/withAuth");
 mongoose.connect("mongodb://localhost:27017/chat-app").then(() => {
@@ -16,7 +16,7 @@ const io = require("socket.io")(4000, {
   },
 });
 const app = express();
-app.use(express.json({limit:"10mb"}));
+app.use(express.json({ limit: "10mb" }));
 app.use(
   cors({
     origin: "http://localhost:3000",
@@ -41,8 +41,24 @@ app.post("/loadMessages", async (req, res) => {
   const { room } = req.body;
 
   const inDB = await MessageListModel.findOne({ room: room });
-  if (inDB) {
-    res.status(200).json({ list: inDB.messages });
+  const list = inDB.messages;
+
+  let newList = list.map(async (item) => {
+    const { profilePicture } = await UserModel.findOne({
+      username: item.username,
+    });
+    return {
+      username: item.username,
+      user: item.user,
+      pictures: item.pictures,
+      content: item.content,
+      profilePicture: profilePicture,
+    };
+  });
+  if (inDB) { 
+    Promise.all(newList).then((values) => //this slows down the loading a bit
+      res.status(200).json({ list: values })
+    );
   } else {
     res.status(404).json({ msg: "room not found / not created" });
   }
@@ -58,20 +74,27 @@ io.on("connection", (socket) => {
   });
   socket.on("send-msg", async (content1, user, room, pictures) => {
     const { userId, username } = jwt.decode(user);
-    const res = await UserModel.findOne({_id:userId})
+    const res = await UserModel.findOne({ _id: userId });
     if (room !== "") {
-      io.to(room).emit("receive-msg", content1, userId, username, pictures, res.profilePicture);
-      console.log(res.profilePicture)
+      io.to(room).emit(
+        "receive-msg",
+        content1,
+        userId,
+        username,
+        pictures,
+        res.profilePicture
+      );
+      console.log(res.profilePicture);
       const inDB = await MessageListModel.findOne({ room: room });
       if (!inDB) {
         MessageListModel.create({
-          messages: [{ user: userId, username, content: content1, pictures,profilePicture:res.profilePicture }],
+          messages: [{ user: userId, username, content: content1, pictures }],
           room: room,
         });
       } else {
         inDB.messages = [
           ...inDB.messages,
-          { user: userId, username, content: content1, pictures,profilePicture:res.profilePicture },
+          { user: userId, username, content: content1, pictures },
         ];
         inDB.save();
       }

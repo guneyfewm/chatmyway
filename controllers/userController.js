@@ -64,5 +64,4 @@ const UpdateProfilePicture = async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 };
-
 module.exports = { Signup, Login, LoadUser, UpdateProfilePicture };

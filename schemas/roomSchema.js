@@ -8,7 +8,6 @@ const messageListSchema = new mongoose.Schema({
       username:{required:true,type:String},
       content: { required: true, type: String },
       pictures:[String],
-      profilePicture:String
     },
   ],
 });
