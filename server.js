@@ -42,13 +42,13 @@ app.post("/loadRooms", async (req, res) => {
   const { page, amount, filter } = req.body;
   if (!filter) {
     try {
-       const count = await MessageListModel.count({})
+      const count = await MessageListModel.count({});
 
       const rooms = await MessageListModel.find({})
         .limit(amount * 1) // 0*1 = 0;
         .skip((page - 1) * amount) //index starts at 0 thus page-1
         .select("room");
-      res.status(200).json({ rooms, page,totalPages:count/amount });
+      res.status(200).json({ rooms, page, totalPages: count / amount });
       console.log(rooms);
     } catch (err) {
       res.status(400).json({ error: err.message });
@@ -56,46 +56,52 @@ app.post("/loadRooms", async (req, res) => {
   }
 });
 app.post("/loadMessages", async (req, res) => {
-  const { username } = await UserModel.findOne({ _id: req.user });
-  const { room, chattingWith } = req.body;
-  const privateRoom = username + " " + chattingWith;
-  const secondPrivateRoom =
-    privateRoom.split(" ")[1] + " " + privateRoom.split(" ")[0];
-  const firstTry = await MessageListModel.findOne({ room: privateRoom });
-  const secondTry = await MessageListModel.findOne({ room: secondPrivateRoom });
-
-  const inDB = await MessageListModel.findOne({
-    room: room
-      ? room
-      : firstTry
-      ? privateRoom
-      : secondTry
-      ? secondPrivateRoom
-      : console.log("error 50 server.js"),
-  });
-
-  const list = inDB != null ? inDB.messages : [];
-
-  let newList = list.map(async (item) => {
-    const { profilePicture } = await UserModel.findOne({
-      username: item.username,
+  try {
+    const { username } = await UserModel.findOne({ _id: req.user });
+    const { room, chattingWith } = req.body;
+    const privateRoom = username + " " + chattingWith;
+    const secondPrivateRoom =
+      privateRoom.split(" ")[1] + " " + privateRoom.split(" ")[0];
+    const firstTry = await MessageListModel.findOne({ room: privateRoom });
+    const secondTry = await MessageListModel.findOne({
+      room: secondPrivateRoom,
     });
-    return {
-      username: item.username,
-      user: item.user,
-      pictures: item.pictures,
-      content: item.content,
-      profilePicture: profilePicture,
-    };
-  });
-  if (inDB) {
-    Promise.all(newList).then(
-      (
-        values //this slows down the loading a bit
-      ) => res.status(200).json({ list: values })
-    );
-  } else {
-    res.status(404).json({ msg: "room not found / not created" });
+
+    const inDB = await MessageListModel.findOne({
+      room: room
+        ? room
+        : firstTry
+        ? privateRoom
+        : secondTry
+        ? secondPrivateRoom
+        : console.log("not found in db"),
+    });
+
+    const list = inDB != null ? inDB.messages : [];
+
+    let newList = list.map(async (item) => {
+      const { profilePicture } = await UserModel.findOne({
+        username: item.username,
+      });
+      return {
+        username: item.username,
+        user: item.user,
+        pictures: item.pictures,
+        content: item.content,
+        profilePicture: profilePicture,
+      };
+    });
+    if (inDB) {
+      Promise.all(newList).then(
+        (
+          values //this slows down the loading a bit
+        ) => res.status(200).json({ list: values })
+      );
+    } else {
+      res.status(404).json({ msg: "room not found / not created" });
+    }
+  } catch (err) {
+    res.status(400).json({ error: err.message });
   }
 });
 
